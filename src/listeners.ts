@@ -5,24 +5,31 @@ import {
   AudioPlayerStatus,
   createAudioPlayer,
   VoiceConnection,
+  AudioPlayer,
 } from "@discordjs/voice";
 import { Client } from "discord.js";
+
+interface TalkerNode {
+  connection: VoiceConnection;
+  player: AudioPlayer;
+}
+const nodes: Map<string, TalkerNode> = new Map();
 
 const TIMEOUT = 10000;
 
 const timeoutHandler = () => {
   let timeout: NodeJS.Timeout;
   return {
-    start: (connection: VoiceConnection) => {
+    startTimeout: (connection: VoiceConnection) => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => connection.destroy(), TIMEOUT);
     },
-    cancel: () => clearTimeout(timeout),
+    cancelTimeout: () => clearTimeout(timeout),
   };
 };
 
 export const registerListeners = (client: Client, repo: string) => {
-  const { start, cancel } = timeoutHandler();
+  const { startTimeout, cancelTimeout } = timeoutHandler();
   client.once("ready", (c) => {
     if (!c.user || !c.application) return;
     console.log(`${c.user.username} is online`);
@@ -38,7 +45,7 @@ export const registerListeners = (client: Client, repo: string) => {
     )
       return;
     if (!msg.member?.voice.channel || !msg.guild) return;
-    cancel();
+    cancelTimeout();
     const channel = msg.member.voice.channel;
     const player = createAudioPlayer();
     const resource = createAudioResource(`${repo}/${numberSent}.mp3`);
@@ -50,11 +57,12 @@ export const registerListeners = (client: Client, repo: string) => {
         .voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
+    nodes.set(channel.id, { connection, player });
     player.play(resource);
     connection.subscribe(player);
 
     player.on(AudioPlayerStatus.Idle, () => {
-      start(connection);
+      startTimeout(connection);
     });
   });
 };
