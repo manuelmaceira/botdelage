@@ -4,10 +4,22 @@ import {
   DiscordGatewayAdapterCreator,
   AudioPlayerStatus,
   createAudioPlayer,
+  VoiceConnection,
 } from "@discordjs/voice";
 import { Client } from "discord.js";
 
+const TIMEOUT = 10000;
+
+const timeoutHandler = () => {
+  let timeout: NodeJS.Timeout;
+  return (connection: VoiceConnection) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => connection.destroy(), TIMEOUT);
+  };
+};
+
 export const registerListeners = (client: Client, repo: string) => {
+  const resetTimer = timeoutHandler();
   client.once("ready", (c) => {
     if (!c.user || !c.application) return;
     console.log(`${c.user.username} is online`);
@@ -36,7 +48,7 @@ export const registerListeners = (client: Client, repo: string) => {
     player.play(resource);
     connection.subscribe(player);
     player.on(AudioPlayerStatus.Idle, () => {
-      connection.destroy();
+      resetTimer(connection);
     });
   });
 };
