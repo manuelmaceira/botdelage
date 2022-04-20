@@ -21,7 +21,12 @@ const timeoutHandler = () => {
   return {
     startTimeout: (connection: VoiceConnection) => {
       if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => connection.destroy(), TIMEOUT);
+	  timeout = setTimeout(() => {
+		  const channelId= connection.joinConfig.channelId;
+		  if (!channelId) throw new Error("Invalid connection!");
+		  connectionMap.delete(channelId);
+		  connection.destroy();
+	  }, TIMEOUT);
     },
     cancelTimeout: () => clearTimeout(timeout),
   };
