@@ -7,13 +7,9 @@ import {
   VoiceConnection,
   AudioPlayer,
 } from "@discordjs/voice";
-import { Client } from "discord.js";
+import { Client, Message } from "discord.js";
 
-interface TalkerNode {
-  connection: VoiceConnection;
-  player: AudioPlayer;
-}
-const nodes: Map<string, TalkerNode> = new Map();
+const connectionMap: Map<string, VoiceConnection> = new Map();
 
 const TIMEOUT = 10000;
 
@@ -28,6 +24,36 @@ const timeoutHandler = () => {
   };
 };
 
+const joinToMessage = (msg: Message) => {
+  if (!msg.member?.voice.channel || !msg.guild) {
+    throw new Error("Invalid message!");
+  }
+  const channel = msg.member.voice.channel;
+
+  const connection =
+    connectionMap.get(channel.id) ||
+    joinVoiceChannel({
+      channelId: channel.id,
+      guildId: msg.guild.id,
+      adapterCreator: msg.guild
+        .voiceAdapterCreator as DiscordGatewayAdapterCreator,
+    });
+  connectionMap.set(channel.id, connection);
+  return connection;
+};
+
+const breakConnections = () => {
+  for (const connection of connectionMap.values()) {
+    connection.destroy();
+  }
+};
+
+const isOwner = (msg: Message) =>
+  msg.author.id === process.env.OWNER_ID;
+
+const isOwnerMsg = (msg: Message, content: string) =>
+  isOwner(msg) && msg.content === content;
+
 export const registerListeners = (client: Client, repo: string) => {
   const { startTimeout, cancelTimeout } = timeoutHandler();
   client.once("ready", (c) => {
@@ -36,6 +62,14 @@ export const registerListeners = (client: Client, repo: string) => {
   });
   client.on("messageCreate", async (msg) => {
     if (msg.author.bot) return;
+    if (isOwnerMsg(msg, "entrá")) {
+      joinToMessage(msg);
+      return;
+    }
+    if (isOwnerMsg(msg, "andate")) {
+      breakConnections();
+      return;
+    }
     const numberSent = parseInt(msg.content);
     if (
       String(numberSent) !== msg.content ||
@@ -46,18 +80,10 @@ export const registerListeners = (client: Client, repo: string) => {
       return;
     if (!msg.member?.voice.channel || !msg.guild) return;
     cancelTimeout();
-    const channel = msg.member.voice.channel;
     const player = createAudioPlayer();
     const resource = createAudioResource(`${repo}/${numberSent}.mp3`);
+    const connection = joinToMessage(msg);
 
-    const connection = joinVoiceChannel({
-      channelId: channel.id,
-      guildId: msg.guild.id,
-      adapterCreator: msg.guild
-        .voiceAdapterCreator as DiscordGatewayAdapterCreator,
-    });
-
-    nodes.set(channel.id, { connection, player });
     player.play(resource);
     connection.subscribe(player);
 
