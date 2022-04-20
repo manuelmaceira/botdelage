@@ -5,13 +5,16 @@ import {
   AudioPlayerStatus,
   createAudioPlayer,
   VoiceConnection,
-  AudioPlayer,
 } from "@discordjs/voice";
 import { Client, Message } from "discord.js";
+import { readdirSync } from "fs";
 
 const connectionMap: Map<string, VoiceConnection> = new Map();
 
 const TIMEOUT = 10000;
+const AUDIO_NAMES = readdirSync("./sonidos").map((name) =>
+  name.replace(".mp3", "")
+);
 
 const timeoutHandler = () => {
   let timeout: NodeJS.Timeout;
@@ -42,18 +45,6 @@ const joinToMessage = (msg: Message) => {
   return connection;
 };
 
-const breakConnections = () => {
-  for (const connection of connectionMap.values()) {
-    connection.destroy();
-  }
-};
-
-const isOwner = (msg: Message) =>
-  msg.author.id === process.env.OWNER_ID;
-
-const isOwnerMsg = (msg: Message, content: string) =>
-  isOwner(msg) && msg.content === content;
-
 export const registerListeners = (client: Client, repo: string) => {
   const { startTimeout, cancelTimeout } = timeoutHandler();
   client.once("ready", (c) => {
@@ -62,26 +53,13 @@ export const registerListeners = (client: Client, repo: string) => {
   });
   client.on("messageCreate", async (msg) => {
     if (msg.author.bot) return;
-    if (isOwnerMsg(msg, "entrá")) {
-      joinToMessage(msg);
-      return;
-    }
-    if (isOwnerMsg(msg, "andate")) {
-      breakConnections();
-      return;
-    }
-    const numberSent = parseInt(msg.content);
-    if (
-      String(numberSent) !== msg.content ||
-      !Number.isInteger(numberSent) ||
-      numberSent < 1 ||
-      numberSent > 42
-    )
-      return;
+    if (!AUDIO_NAMES.includes(msg.content)) return;
     if (!msg.member?.voice.channel || !msg.guild) return;
     cancelTimeout();
     const player = createAudioPlayer();
-    const resource = createAudioResource(`${repo}/${numberSent}.mp3`);
+    const resource = createAudioResource(
+      `${repo}/${msg.content}.mp3`
+    );
     const connection = joinToMessage(msg);
 
     player.play(resource);
