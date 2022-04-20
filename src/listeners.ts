@@ -12,14 +12,17 @@ const TIMEOUT = 10000;
 
 const timeoutHandler = () => {
   let timeout: NodeJS.Timeout;
-  return (connection: VoiceConnection) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => connection.destroy(), TIMEOUT);
+  return {
+    start: (connection: VoiceConnection) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => connection.destroy(), TIMEOUT);
+    },
+    cancel: () => clearTimeout(timeout),
   };
 };
 
 export const registerListeners = (client: Client, repo: string) => {
-  const resetTimer = timeoutHandler();
+  const { start, cancel } = timeoutHandler();
   client.once("ready", (c) => {
     if (!c.user || !c.application) return;
     console.log(`${c.user.username} is online`);
@@ -35,6 +38,7 @@ export const registerListeners = (client: Client, repo: string) => {
     )
       return;
     if (!msg.member?.voice.channel || !msg.guild) return;
+    cancel();
     const channel = msg.member.voice.channel;
     const player = createAudioPlayer();
     const resource = createAudioResource(`${repo}/${numberSent}.mp3`);
@@ -45,10 +49,12 @@ export const registerListeners = (client: Client, repo: string) => {
       adapterCreator: msg.guild
         .voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+
     player.play(resource);
     connection.subscribe(player);
+
     player.on(AudioPlayerStatus.Idle, () => {
-      resetTimer(connection);
+      start(connection);
     });
   });
 };
