@@ -11,7 +11,7 @@ import { readdirSync } from "fs";
 
 const connectionMap: Map<string, VoiceConnection> = new Map();
 
-const TIMEOUT = 10000;
+const TIMEOUT = 60*1000;
 const AUDIO_NAMES = readdirSync("./sonidos").map((name) =>
   name.replace(".mp3", "")
 );
