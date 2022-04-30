@@ -5,13 +5,15 @@ import {
   AudioPlayerStatus,
   createAudioPlayer,
   VoiceConnection,
+  VoiceConnectionDisconnectedState,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import { Client, Message } from "discord.js";
 import { readdirSync } from "fs";
 
 const connectionMap: Map<string, VoiceConnection> = new Map();
 
-const TIMEOUT = 60*1000;
+const TIMEOUT = 60 * 1000;
 const AUDIO_NAMES = readdirSync("./sonidos").map((name) =>
   name.replace(".mp3", "")
 );
@@ -21,12 +23,12 @@ const timeoutHandler = () => {
   return {
     startTimeout: (connection: VoiceConnection) => {
       if (timeout) clearTimeout(timeout);
-	  timeout = setTimeout(() => {
-		  const channelId= connection.joinConfig.channelId;
-		  if (!channelId) throw new Error("Invalid connection!");
-		  connectionMap.delete(channelId);
-		  connection.destroy();
-	  }, TIMEOUT);
+      timeout = setTimeout(() => {
+        const channelId = connection.joinConfig.channelId;
+        if (!channelId) throw new Error("Invalid connection!");
+        connectionMap.delete(channelId);
+        connection.destroy();
+      }, TIMEOUT);
     },
     cancelTimeout: () => clearTimeout(timeout),
   };
@@ -75,3 +77,18 @@ export const registerListeners = (client: Client, repo: string) => {
     });
   });
 };
+
+(() => {
+  const checkConnections = () => {
+    for (const [channelId, connection] of connectionMap.entries()) {
+      if (
+        connection.state.status ===
+          VoiceConnectionStatus.Disconnected ||
+        connection.state.status === VoiceConnectionStatus.Destroyed
+      ) {
+        connectionMap.delete(channelId);
+      }
+    }
+  };
+  setInterval(checkConnections, 500);
+})();
