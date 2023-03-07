@@ -1,2 +1,2 @@
 # botdelage
-A Discord bot to make a discord server into an age 2 lobby (only sounds in spanish)
+Una botonera para discord (arrancó siendo solo sonidos del age 2 pero se fue a la mierda)
