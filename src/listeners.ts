@@ -40,15 +40,18 @@ const joinToMessage = (msg: Message) => {
   }
   const channel = msg.member.voice.channel;
 
-  const connection =
-    connectionMap.get(channel.id) ||
-    joinVoiceChannel({
+  const connection = connectionMap.get(channel.id);
+  if (!connection || connection.state.status === "signalling") {
+    if (connection) connection.destroy();
+    const newConnection = joinVoiceChannel({
       channelId: channel.id,
       guildId: msg.guild.id,
       adapterCreator: msg.guild
         .voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
-  connectionMap.set(channel.id, connection);
+    connectionMap.set(channel.id, newConnection);
+    return newConnection;
+  }
   return connection;
 };
 

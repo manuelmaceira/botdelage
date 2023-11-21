@@ -5,7 +5,12 @@ import "./bootstrap";
 console.log("Starting bot...");
 
 const client = new Client({
-  intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
+  intents: [
+    "Guilds",
+    "GuildMessages",
+    "GuildVoiceStates",
+    "MessageContent",
+  ],
 });
 
 if (!process.env.REPO) throw new Error("Sound repo not found!");
